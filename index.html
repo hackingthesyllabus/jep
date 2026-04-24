@@ -878,21 +878,27 @@ const App = (() => {
     const vals=getValues(g.base,g.rows);
     const grid=document.getElementById('boardGrid');
     grid.style.gridTemplateColumns='repeat('+g.cols+',1fr)';
-    grid.innerHTML='';
-    g.categories.forEach(cat=>{grid.innerHTML+='<div class="cat-cell"><span>'+esc(cat.name||'?')+'</span></div>';});
+    // Build ALL html as one string, set innerHTML ONCE.
+    // Mixing appendChild+addEventListener with a later innerHTML+= destroys all
+    // previously attached event listeners. Use onclick attributes instead — they
+    // are stored in the HTML and survive any innerHTML re-parse.
+    let html='';
+    g.categories.forEach(cat=>{
+      html+='<div class="cat-cell"><span>'+esc(cat.name||'?')+'</span></div>';
+    });
     for(let r=0;r<g.rows;r++){
       g.categories.forEach((cat,ci)=>{
-        const clue=cat.clues[r], key=ci+'-'+r, used=sess.usedClues.includes(key);
-        const div=document.createElement('div');
-        div.className='clue-cell'+(used?' used':'')+(clue&&clue.dailyDouble&&!used?' daily-double-badge':'');
-        div.innerHTML='<span class="cell-value">'+(used?'':fmt(vals[r]))+'</span>';
-        if(!used) div.addEventListener('click',()=>openClue(ci,r));
-        grid.appendChild(div);
+        const clue=cat.clues[r]||{}, key=ci+'-'+r, used=sess.usedClues.includes(key);
+        const ddClass=(clue.dailyDouble&&!used)?' daily-double-badge':'';
+        const click=used?'':' onclick="App.openClue('+ci+','+r+')"';
+        html+='<div class="clue-cell'+(used?' used':'')+ddClass+'"'+click+'>'
+          +'<span class="cell-value">'+(used?'':fmt(vals[r]))+'</span></div>';
       });
     }
     if(g.finalJeopardy&&g.finalJeopardy.question){
-      grid.innerHTML+='<div class="final-jeopardy-btn" onclick="App.openFinalJeopardy()"><span>FINAL JEOPARDY</span></div>';
+      html+='<div class="final-jeopardy-btn" onclick="App.openFinalJeopardy()"><span>FINAL JEOPARDY</span></div>';
     }
+    grid.innerHTML=html;
   }
 
   function updateScoresBar(){
